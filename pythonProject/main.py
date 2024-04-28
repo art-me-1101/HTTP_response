@@ -1,13 +1,11 @@
 import sys
 from io import BytesIO
-from geopy.distance import geodesic as gd
 
 import requests
 from PIL import Image
 
-
-toponym_to_find = " ".join(sys.argv[1:])
-
+toponym_to_find = 'Россия Иваново ул. 30 м-н 33'
+print(toponym_to_find)
 geocoder_api_server = "http://geocode-maps.yandex.ru/1.x/"
 
 geocoder_params = {
@@ -25,7 +23,6 @@ toponym = json_response["response"]["GeoObjectCollection"][
     "featureMember"][0]["GeoObject"]
 toponym_coodrinates = ','.join(toponym["Point"]["pos"].split())
 
-
 search_api_server = "https://search-maps.yandex.ru/v1/"
 api_key = "65fde4fd-24f6-49cd-aa40-34c4dc166d7f"
 
@@ -35,8 +32,7 @@ search_params = {
     "text": "аптека",
     "lang": "ru_RU",
     "ll": address_ll,
-    "type": "biz",
-    'results': '1'
+    "type": "biz"
 }
 
 response = requests.get(search_api_server, params=search_params)
@@ -44,19 +40,26 @@ if not response:
     ...
 
 json_response = response.json()
-toponym = json_response["features"][0]
-print(f"адрес: {toponym['properties']['CompanyMetaData']['address']}\n"
-      f"Название: {toponym['properties']['CompanyMetaData']['name']}\n"
-      f"Время работы: {toponym['properties']['CompanyMetaData']['Hours']['text']}\n"
-      f"Расстояние от заданной точки: {gd(tuple(address_ll.split(',')), (toponym_coodrinates,)).meters} метров")
-toponym_coodrinates = list(map(str, toponym['geometry']['coordinates']))
+apteki = []
+for i in range(10):
+    toponym = json_response["features"][i]
+    toponym_coodrinates = list(map(str, toponym['geometry']['coordinates']))
+    toponym_coord = ','.join(toponym_coodrinates)
+    if 'Hours' in toponym['properties']['CompanyMetaData']:
+        try:
+            if toponym['properties']['CompanyMetaData']['Hours']['Availabilities'][0]['TwentyFourHours']:
+                apteki.append((toponym_coord, 2))
+            else:
+                apteki.append((toponym_coord, 1))
+        except Exception:
+            apteki.append((toponym_coord, 1))
+    else:
+        apteki.append((toponym_coord, 0))
 
-toponym_coord = ','.join(toponym_coodrinates)
 map_params = {
     "l": "map",
-    'pt': address_ll + ',pm2al~' + toponym_coord + ',pm2bl'
+    'pt': '~'.join([i[0] + [',pmgrm', ',pmblm', ',pmgnm'][i[1]] for i in apteki])
 }
-
 map_api_server = "http://static-maps.yandex.ru/1.x/"
 response = requests.get(map_api_server, params=map_params)
 
