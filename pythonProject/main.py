@@ -1,17 +1,12 @@
 import sys
 from io import BytesIO
-from get_delta import get_delta
+from pprint import pprint
 
 import requests
 from PIL import Image
 
-# первое число - это размер карты (если ввести 0, то размер подберётся автоматически
-# остальное - это адрес места
-delta = sys.argv[1]
-toponym_to_find = " ".join(sys.argv[2:])
 
-
-
+toponym_to_find = 'Иваново'
 
 geocoder_api_server = "http://geocode-maps.yandex.ru/1.x/"
 
@@ -28,24 +23,37 @@ if not response:
 json_response = response.json()
 toponym = json_response["response"]["GeoObjectCollection"][
     "featureMember"][0]["GeoObject"]
-toponym_coodrinates = toponym["Point"]["pos"]
-if delta == '0':
-    delta = get_delta(toponym)
-    toponym_longitude, toponym_lattitude = toponym_coodrinates.split(" ")
-    map_params = {
-        "ll": ",".join([toponym_longitude, toponym_lattitude]),
-        "spn": ",".join(delta),
-        "l": "map",
-        'pt': ",".join([toponym_longitude, toponym_lattitude]) + ',comma'
-    }
-else:
-    toponym_longitude, toponym_lattitude = toponym_coodrinates.split(" ")
-    map_params = {
-        "ll": ",".join([toponym_longitude, toponym_lattitude]),
-        "spn": ",".join([delta, delta]),
-        "l": "map",
-        'pt': ",".join([toponym_longitude, toponym_lattitude]) + ',comma'
-    }
+toponym_coodrinates = ','.join(toponym["Point"]["pos"].split())
+
+
+search_api_server = "https://search-maps.yandex.ru/v1/"
+api_key = "65fde4fd-24f6-49cd-aa40-34c4dc166d7f"
+
+address_ll = toponym_coodrinates
+pprint(address_ll)
+search_params = {
+    "apikey": api_key,
+    "text": "аптека",
+    "lang": "ru_RU",
+    "ll": address_ll,
+    "type": "biz",
+    'results': '1'
+}
+
+response = requests.get(search_api_server, params=search_params)
+if not response:
+    ...
+
+json_response = response.json()
+pprint(json_response)
+toponym = json_response["features"][0]
+toponym_coodrinates = list(map(str, toponym['geometry']['coordinates']))
+
+toponym_coord = ','.join(toponym_coodrinates)
+map_params = {
+    "l": "map",
+    'pt': address_ll + ',pm2al~' + toponym_coord + ',pm2bl'
+}
 
 map_api_server = "http://static-maps.yandex.ru/1.x/"
 response = requests.get(map_api_server, params=map_params)
