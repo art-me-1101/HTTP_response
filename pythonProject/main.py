@@ -4,8 +4,7 @@ from io import BytesIO
 import requests
 from PIL import Image
 
-toponym_to_find = 'Россия Иваново ул. 30 м-н 33'
-print(toponym_to_find)
+toponym_to_find = ' '.join(sys.argv[1:])
 geocoder_api_server = "http://geocode-maps.yandex.ru/1.x/"
 
 geocoder_params = {
